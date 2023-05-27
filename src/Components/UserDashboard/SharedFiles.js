@@ -1,24 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Form, Button } from 'react-bootstrap';
+import axios from 'axios';
 
-const SharedFiles = () => {
-  const [files, setFiles] = useState([
-    { id: 1, name: 'File 1', task: 'Task 1', uploadDate: '2023-05-28' },
-    { id: 2, name: 'File 2', task: 'Task 2', uploadDate: '2023-06-02' },
-    { id: 3, name: 'File 3', task: 'Task 1', uploadDate: '2023-06-05' },
-  ]);
-
+const SharedFiles = ({ match }) => {
+  const [files, setFiles] = useState([]);
   const [filter, setFilter] = useState('');
+  const params = new URLSearchParams(window.location.search);
+  const usernameParam = params.get('name');
+  useEffect(() => {
+    const recipientName = usernameParam;
+    axios
+      .get(`http://localhost:4000/files/${recipientName}`)
+      .then((response) => {
+        setFiles(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching shared files:', error);
+      });
+  }, [usernameParam]);
 
   const handleFilterChange = (event) => {
     setFilter(event.target.value);
   };
 
-  const filteredFiles = files.filter((file) => file.task.toLowerCase().includes(filter.toLowerCase()));
+  const filteredFiles = files.filter((file) =>
+    file.task.toLowerCase().includes(filter.toLowerCase())
+  );
 
-  const handleDownloadFile = (id) => {
-    // Handle file download logic here
-    console.log(`Downloading file with id: ${id}`);
+  const handleDownloadFile = (filename) => {
+    axios
+      .get(`http://localhost:4000/files/download/${filename}`, { responseType: 'blob' })
+      .then((response) => {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      })
+      .catch((error) => {
+        console.error('Error downloading file:', error);
+      });
+  };
+
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   return (
@@ -44,11 +72,11 @@ const SharedFiles = () => {
         <tbody>
           {filteredFiles.map((file) => (
             <tr key={file.id}>
-              <td>{file.name}</td>
+              <td>{file.filename}</td>
               <td>{file.task}</td>
-              <td>{file.uploadDate}</td>
+              <td>{formatDate(file.upload_date)}</td>
               <td>
-                <Button variant="primary" onClick={() => handleDownloadFile(file.id)}>
+                <Button variant="primary" onClick={() => handleDownloadFile(file.filename)}>
                   Download
                 </Button>
               </td>

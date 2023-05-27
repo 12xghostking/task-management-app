@@ -1,14 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Badge from 'react-bootstrap/Badge';
+import axios from 'axios';
 
 const Overview = () => {
-  const tasks = [
-    { id: 1, title: 'Task 1', assignedTo: 'John Doe', status: 'In Progress' },
-    { id: 2, title: 'Task 2', assignedTo: 'Jane Smith', status: 'Completed' },
-    { id: 3, title: 'Task 3', assignedTo: 'Alex Johnson', status: 'In Progress' },
-  ];
+  const [tasks, setTasks] = useState([]);
+
+  useEffect(() => {
+    axios.get('http://localhost:4000/tasks')
+      .then((response) => {
+        setTasks(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching tasks:', error);
+      });
+  }, []);
 
   return (
     <Card>
@@ -19,16 +26,16 @@ const Overview = () => {
           {tasks.map((task) => (
             <ListGroup.Item key={task.id} className="d-flex justify-content-between align-items-center">
               <div>
-                <span>{task.title}</span>
+                <strong>{task.name}</strong>
                 <br />
-                <small>Assigned to: {task.assignedTo}</small>
+                <small>Assigned to: {task.assignedMembers}</small>
               </div>
               <Badge
-                variant={task.status === 'Completed' ? 'success' : 'warning'}
+                variant={task.completed ? 'success' : 'warning'}
                 className="d-flex align-items-center"
                 style={{ height: '100%', justifyContent: 'center', alignItems: 'center' }}
               >
-                {task.status}
+                {task.completed ? 'Completed' : 'In Progress'}
               </Badge>
             </ListGroup.Item>
           ))}

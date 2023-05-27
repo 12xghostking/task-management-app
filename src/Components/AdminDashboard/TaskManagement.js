@@ -1,18 +1,35 @@
-import React, { useState } from 'react';
-import { Container,Button, Form, ListGroup } from 'react-bootstrap';
-
+import React, { useState, useEffect } from 'react';
+import { Container, Button, Form, ListGroup } from 'react-bootstrap';
+import axios from 'axios';
 const TaskManagement = () => {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [newDeadline, setNewDeadline] = useState('');
   const [newTeamMember, setNewTeamMember] = useState('');
-  const [newDescription, setNewDescription] = useState('');
+  const [newNote, setNewNote] = useState('');
   const [filterCompleted, setFilterCompleted] = useState(false);
   const [editDeadlineTaskId, setEditDeadlineTaskId] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
+  const [teamMembers, setTeamMembers] = useState([]);
 
-  const teamMembers = ['John Doe', 'Jane Smith', 'Mike Johnson']; // Dummy team member names
-
+  useEffect(() => {
+    axios.get('http://localhost:4000/users')
+      .then((response) => {
+        setTeamMembers(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching users:', error);
+      });
+  }, []);
+  useEffect(() => {
+    axios.get('http://localhost:4000/tasks')
+      .then((response) => {
+        setTasks(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching tasks:', error);
+      });
+  }, [tasks]);
   const handleTaskChange = (e) => {
     setNewTask(e.target.value);
   };
@@ -25,48 +42,101 @@ const TaskManagement = () => {
     setNewTeamMember(e.target.value);
   };
 
-  const handleDescriptionChange = (e) => {
-    setNewDescription(e.target.value);
+  const handleNoteChange = (e) => {
+    setNewNote(e.target.value);
   };
 
   const handleTaskSubmit = (e) => {
     e.preventDefault();
+  
     const task = {
-      id: Date.now(),
       name: newTask,
       deadline: newDeadline,
       assignedMembers: [newTeamMember],
-      description: newDescription,
+      notes: newNote,
       completed: false,
     };
-    setTasks([...tasks, task]);
-    setNewTask('');
-    setNewDeadline('');
-    setNewTeamMember('');
-    setNewDescription('');
+  
+    axios.post('http://localhost:4000/tasks', task)
+      .then((response) => {
+        if (response.status === 201) {
+          const newTaskId = response.data.id;
+          setNewTask('');
+          setNewDeadline('');
+          setNewTeamMember('');
+          setNewNote('');
+  
+          // Fetch the updated list of tasks
+          axios.get('http://localhost:4000/tasks')
+            .then((response) => {
+              setTasks(response.data);
+            })
+            .catch((error) => {
+              console.error('Error fetching tasks:', error);
+            });
+        }
+      })
+      .catch((error) => {
+        console.error('Error creating task:', error);
+      });
   };
-
+  
   const handleCompleteTask = (taskId) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task))
+    const updatedTasks = tasks.map((task) =>
+      task.id === taskId ? { ...task, completed: !task.completed } : task
     );
+    setTasks(updatedTasks);
+  
+    axios.put(`http://localhost:4000/tasks/${taskId}/completed`, { completed: updatedTasks.find((task) => task.id === taskId)?.completed })
+      .then((response) => {
+        if (response.status === 200) {
+          // Task completion status updated successfully
+        }
+      })
+      .catch((error) => {
+        console.error('Error updating task completion status:', error);
+      });
   };
+  
 
   const handleEditDeadline = (taskId) => {
     setEditDeadlineTaskId(taskId);
   };
 
   const handleEditDeadlineSubmit = (taskId) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) => (task.id === taskId ? { ...task, deadline: editDeadline } : task))
-    );
-    setEditDeadlineTaskId('');
-    setEditDeadline('');
+    const updatedTask = {
+      deadline: editDeadline,
+    };
+
+    axios.put(`http://localhost:4000/tasks/${taskId}/deadline`, updatedTask)
+
+      .then((response) => {
+        if (response.status === 200) {
+          setTasks((prevTasks) =>
+            prevTasks.map((task) => (task.id === taskId ? { ...task, deadline: editDeadline } : task))
+          );
+          setEditDeadlineTaskId('');
+          setEditDeadline('');
+        }
+      })
+      .catch((error) => {
+        console.error('Error updating deadline:', error);
+      });
   };
 
+
   const handleRemoveTask = (taskId) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+    axios.delete(`http://localhost:4000/tasks/${taskId}`)
+      .then((response) => {
+        if (response.status === 200) {
+          setTasks((prevTasks) => prevTasks.filter((task) => task.id !== taskId));
+        }
+      })
+      .catch((error) => {
+        console.error('Error removing task:', error);
+      });
   };
+
 
   const handleFilterCompleted = () => {
     setFilterCompleted(!filterCompleted);
@@ -79,36 +149,36 @@ const TaskManagement = () => {
       <h2>Task Management</h2>
 
       {/* Create New Task Form */}
-<Container fluid>
-  <Form onSubmit={handleTaskSubmit}>
-    <Form.Group controlId="taskName">
-      <Form.Label>Task Name:</Form.Label>
-      <Form.Control type="text" value={newTask} onChange={handleTaskChange} required />
-    </Form.Group>
-    <Form.Group controlId="deadline">
-      <Form.Label>Deadline:</Form.Label>
-      <Form.Control type="text" value={newDeadline} onChange={handleDeadlineChange} required />
-    </Form.Group>
-    <Form.Group controlId="teamMember">
-      <Form.Label>Assigned Team Member:</Form.Label>
-      <Form.Control as="select" value={newTeamMember} onChange={handleTeamMemberChange} required>
-        <option value="">Select Team Member</option>
-        {teamMembers.map((member) => (
-          <option key={member} value={member}>
-            {member}
-          </option>
-        ))}
-      </Form.Control>
-    </Form.Group>
-    <Form.Group controlId="description">
-      <Form.Label>Description:</Form.Label>
-      <Form.Control as="textarea" value={newDescription} onChange={handleDescriptionChange} rows={3} />
-    </Form.Group>
-    <Button variant="primary" type="submit">
-      Create Task
-    </Button>
-  </Form>
-</Container>
+      <Container fluid>
+        <Form onSubmit={handleTaskSubmit}>
+          <Form.Group controlId="taskName">
+            <Form.Label>Task Name:</Form.Label>
+            <Form.Control type="text" value={newTask} onChange={handleTaskChange} required />
+          </Form.Group>
+          <Form.Group controlId="deadline">
+            <Form.Label>Deadline:</Form.Label>
+            <Form.Control type="text" value={newDeadline} onChange={handleDeadlineChange} required />
+          </Form.Group>
+          <Form.Group controlId="teamMember">
+            <Form.Label>Assign to Team Member:</Form.Label>
+            <Form.Control as="select" value={newTeamMember} onChange={handleTeamMemberChange} required>
+              <option value="">Select Team Member</option>
+              {teamMembers.map((member) => (
+                <option key={member.id} value={member.name}>
+                  {member.name}
+                </option>
+              ))}
+            </Form.Control>
+          </Form.Group>
+          <Form.Group controlId="description">
+            <Form.Label>Notes:</Form.Label>
+            <Form.Control as="textarea" value={newNote} onChange={handleNoteChange} rows={3} />
+          </Form.Group>
+          <Button variant="primary" type="submit">
+            Create Task
+          </Button>
+        </Form>
+      </Container>
 
       {/* Task List */}
       <div className="row mt-4">
@@ -122,10 +192,10 @@ const TaskManagement = () => {
                     <strong>Deadline:</strong> {task.deadline}
                   </p>
                   <p>
-                    <strong>Description:</strong> {task.description}
+                    <strong>Notes:</strong> {task.notes}
                   </p>
                   <p>
-                    <strong>Assigned Team Member:</strong> {task.assignedMembers[0]}
+                    <strong>Assigned Team Member:</strong> {task.assignedMembers}
                   </p>
                 </div>
                 <div>

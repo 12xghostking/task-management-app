@@ -3,11 +3,15 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import Header from '../Header/Header.js';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
@@ -20,17 +24,33 @@ const LoginForm = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+  
     // Perform login logic here using the email and password state values
     if (password.length < 5) {
       setShowError(true);
+      setErrorMessage('Password should be at least 5 characters long.');
     } else {
-      console.log('Login form submitted');
-      console.log('Email:', email);
-      console.log('Password:', password);
-      // You can call an API or perform any required authentication logic
+      axios
+        .post('http://localhost:4000/login', { email, password })
+        .then((response) => {
+          const { role, name } = response.data;
+          // Redirect to the appropriate dashboard based on the role and pass name as a URL parameter
+          if (role === 'admin') {
+            // Redirect to admin dashboard with name parameter
+            navigate(`/admin?name=${name}`);
+          } else {
+            // Redirect to user dashboard with name parameter
+            navigate(`/user?name=${name}`);
+          }
+        })
+        .catch((error) => {
+          setErrorMessage('Invalid email or password.');
+          setShowError(true);
+          console.log(error);
+        });
     }
   };
-
+  
   return (
     <>
       <Header />
@@ -39,7 +59,7 @@ const LoginForm = () => {
           <h2>Login</h2>
           {showError && (
             <Alert variant="danger">
-              Password should be at least 5 characters long.
+              {errorMessage}
             </Alert>
           )}
           <Form.Group controlId="email">
@@ -53,13 +73,6 @@ const LoginForm = () => {
           <Button variant="primary" type="submit">
             Login
           </Button>
-          <Form.Group controlId="role">
-            <Form.Label>Role:</Form.Label>
-            <Form.Control as="select">
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </Form.Control>
-          </Form.Group>
         </Form>
       </div>
     </>

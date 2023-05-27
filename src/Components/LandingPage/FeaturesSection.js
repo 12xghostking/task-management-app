@@ -11,7 +11,7 @@ const FeaturesSection = () => {
                 <div className="card-body">
                   <h5 className="card-title">Task Management</h5>
                   <p className="card-text">
-                    Easily create, assign, and track tasks for efficient team
+                    Easily create, assign tasks for efficient team
                     collaboration.
                   </p>
                 </div>
@@ -20,10 +20,9 @@ const FeaturesSection = () => {
             <div className="col-lg-4">
               <div className="card mb-3">
                 <div className="card-body">
-                  <h5 className="card-title">Progress Tracking</h5>
+                  <h5 className="card-title">Notification System</h5>
                   <p className="card-text">
-                    Monitor task progress and keep everyone updated on the status
-                    of the project.
+                    Notify team members about change in deadline,File upoad etc.
                   </p>
                 </div>
               </div>

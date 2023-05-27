@@ -1,19 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ListGroup, Badge, Button } from 'react-bootstrap';
+import axios from 'axios';
+
 
 const AssignedTasks = () => {
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'Task 1', deadline: '2023-05-31', status: 'In Progress' },
-    { id: 2, title: 'Task 2', deadline: '2023-06-15', status: 'In Progress' },
-    { id: 3, title: 'Task 3', deadline: '2023-06-30', status: 'In Progress' },
-  ]);
+  
+  const [tasks, setTasks] = useState([]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const usernameParam = params.get('name');
+  
+    axios.get(`http://localhost:4000/tasks/${usernameParam}`)
+      .then((response) => {
+        setTasks(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching tasks:', error);
+      });
+  }, []);
+  
 
   const handleStatusChange = (taskId) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === taskId ? { ...task, status: task.status === 'In Progress' ? 'Completed' : 'In Progress' } : task
-      )
+    const updatedTasks = tasks.map((task) =>
+      task.id === taskId ? { ...task, completed: task.completed === 0 ? 1 : 0 } : task
     );
+    setTasks(updatedTasks);
+
+    const updatedStatus = updatedTasks.find((task) => task.id === taskId)?.completed;
+    axios
+      .put(`http://localhost:4000/tasks/${taskId}/status`, { completed: updatedStatus })
+      .then((response) => {
+        if (response.status === 200) {
+          // Task status updated successfully
+        }
+      })
+      .catch((error) => {
+        console.error('Error updating task status:', error);
+      });
   };
 
   return (
@@ -23,20 +46,34 @@ const AssignedTasks = () => {
         {tasks.map((task) => (
           <ListGroup.Item key={task.id} className="d-flex justify-content-between align-items-center">
             <div>
-              <span>{task.title}</span>
+              <strong>{task.name}</strong>
               <br />
               <small>Deadline: {task.deadline}</small>
+              <br />
+              <small>Notes : {task.notes}</small>
             </div>
             <div>
-              <Badge  variant={task.status === 'Completed' ? 'success' : 'warning'}>{task.status}</Badge>
-              <p> </p>
-              {task.status === 'In Progress' ? (
-                <Button variant="success" size="sm" className="ml-auto" onClick={() => handleStatusChange(task.id)}>
+              <Badge variant={task.completed === 0 ? 'warning' : 'success'}>
+                {task.completed === 0 ? 'In Progress' : 'Completed'}
+              </Badge>
+              <p></p>
+              {task.completed === 0 ? (
+                <Button
+                  variant="warning"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => handleStatusChange(task.id)}
+                >
                   Complete
                 </Button>
               ) : (
-                <Button variant="warning" size="sm" className="ml-auto" onClick={() => handleStatusChange(task.id)}>
-                  In Progress
+                <Button
+                  variant="success"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => handleStatusChange(task.id)}
+                >
+                  Reopen
                 </Button>
               )}
             </div>

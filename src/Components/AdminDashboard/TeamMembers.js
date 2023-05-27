@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, Form } from 'react-bootstrap';
+import axios from 'axios';
 
 const TeamMembers = () => {
-  const [members, setMembers] = useState([
-    { id: 1, name: 'John Doe', task: 'Task 1' },
-    { id: 2, name: 'Jane Smith', task: '' },
-    { id: 3, name: 'Bob Johnson', task: 'Task 3' },
-  ]);
-
+  const [members, setMembers] = useState([]);
   const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    axios.get('http://localhost:4000/members')
+      .then((response) => {
+        setMembers(response.data);
+      })
+      .catch((error) => {
+        console.error('Error fetching members:', error);
+      });
+  }, []);
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);
   };
 
-  const filteredMembers = filter === 'all' ? members : members.filter((member) => (filter === 'free' ? member.task === '' : member.task !== ''));
+  const filteredMembers = filter === 'all'
+    ? members
+    : members.filter((member) => (
+        filter === 'free' ? member.totalTasks === 0 : member.totalTasks > 0
+      ));
 
   return (
     <div>
@@ -36,7 +46,7 @@ const TeamMembers = () => {
           <Card.Body>
             <Card.Title>{member.name}</Card.Title>
             <Card.Text>
-              <strong>Task:</strong> {member.task ? member.task : 'N/A'}
+              <strong>Total Tasks Assigned:</strong> {member.totalTasks}
             </Card.Text>
           </Card.Body>
         </Card>

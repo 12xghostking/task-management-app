@@ -6,14 +6,18 @@ import TeamMembers from './TeamMembers';
 import Notification from './Notification';
 import { Container, Row, Col, Navbar, Nav } from 'react-bootstrap';
 import { FaSignOutAlt } from 'react-icons/fa';
-
+import { useNavigate } from 'react-router-dom';
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const handleSignOut = () => {
+    navigate('/');
+  };
   return (
     <div>
       <Navbar bg="light" expand="lg" className="justify-content-between">
         <Navbar.Brand>Admin Dashboard</Navbar.Brand>
         <Nav>
-          <Nav.Link className="text-danger">
+          <Nav.Link className="text-danger" onClick={handleSignOut}>
             <FaSignOutAlt />
             Sign Out
           </Nav.Link>
