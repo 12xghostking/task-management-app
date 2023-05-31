@@ -22,7 +22,7 @@ const FeaturesSection = () => {
                 <div className="card-body">
                   <h5 className="card-title">Notification System</h5>
                   <p className="card-text">
-                    Notify team members about change in deadline,File upoad etc.
+                    Notify team members about change in deadline,File upload etc.
                   </p>
                 </div>
               </div>
