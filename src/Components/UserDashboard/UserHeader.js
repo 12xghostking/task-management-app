@@ -1,7 +1,6 @@
 import {React,useState,useEffect} from 'react';
 import { Navbar, Nav, Image } from 'react-bootstrap';
 import { FaSignOutAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
 import pic from './task.png'
 import { useNavigate } from 'react-router-dom';
 const Header = () => {
@@ -22,7 +21,7 @@ const Header = () => {
 
   return (
     <Navbar bg="light" expand="lg" className="justify-content-between">
-      <Navbar.Brand as={Link} to="/user">
+      <Navbar.Brand >
         <Image src={pic} roundedCircle width={30} height={30} className="mr-2" />
         {username}
       </Navbar.Brand>
