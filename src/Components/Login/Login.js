@@ -5,6 +5,7 @@ import Alert from 'react-bootstrap/Alert';
 import Header from '../Header/Header.js';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import img1 from './image1.png';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -15,16 +16,17 @@ const LoginForm = () => {
 
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
+    setShowError(false); // Hide error when user starts typing
   };
 
   const handlePasswordChange = (e) => {
     setPassword(e.target.value);
-    setShowError(false);
+    setShowError(false); // Hide error when user starts typing
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-  
+
     // Perform login logic here using the email and password state values
     if (password.length < 5) {
       setShowError(true);
@@ -50,30 +52,55 @@ const LoginForm = () => {
         });
     }
   };
-  
+
   return (
     <>
       <Header />
-      <div className="d-flex justify-content-center">
-        <Form onSubmit={handleSubmit} className="w-50">
-          <h2>Login</h2>
+      <div
+        style={{
+          backgroundImage: `url(${img1})`,
+          backgroundSize: 'cover',
+          display: 'flex',
+          flexDirection: 'column', // Display the elements in a column
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+        }}
+      >
+        <div
+          style={{
+            background: '#fff',
+            padding: '20px',
+            borderRadius: '10px',
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+            transition: 'box-shadow 0.3s ease-in-out',
+            maxWidth: '400px',
+            width: '100%',
+            position: 'relative', // Set position to enable hover animation
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)')}
+          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)')}
+        >
           {showError && (
             <Alert variant="danger">
               {errorMessage}
             </Alert>
           )}
-          <Form.Group controlId="email">
-            <Form.Label>Email:</Form.Label>
-            <Form.Control type="email" value={email} onChange={handleEmailChange} />
-          </Form.Group>
-          <Form.Group controlId="password">
-            <Form.Label>Password:</Form.Label>
-            <Form.Control type="password" value={password} onChange={handlePasswordChange} />
-          </Form.Group>
-          <Button variant="primary" type="submit">
-            Login
-          </Button>
-        </Form>
+          <Form onSubmit={handleSubmit}>
+            <h2>Login</h2>
+            <Form.Group controlId="email">
+              <Form.Label>Email:</Form.Label>
+              <Form.Control type="email" value={email} onChange={handleEmailChange} />
+            </Form.Group>
+            <Form.Group controlId="password">
+              <Form.Label>Password:</Form.Label>
+              <Form.Control type="password" value={password} onChange={handlePasswordChange} />
+            </Form.Group>
+            <Button variant="primary" type="submit">
+              Login
+            </Button>
+          </Form>
+        </div>
       </div>
     </>
   );

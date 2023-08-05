@@ -4,7 +4,9 @@ import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import Header from '../Header/Header.js';
 import axios from 'axios';
+import img1 from './image1.png';
 import { useNavigate } from 'react-router-dom';
+
 const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -14,6 +16,7 @@ const Signup = () => {
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
+
   const handleEmailChange = (e) => {
     setEmail(e.target.value);
   };
@@ -62,46 +65,71 @@ const Signup = () => {
       }
     }
   };
-  
 
   return (
     <>
       <Header />
-      <div className="d-flex justify-content-center">
-        <Form onSubmit={handleSubmit} className="w-50">
-          <h2>Sign Up</h2>
-          {showError && (
-            <Alert variant="danger">
-              {errorMessage}
-            </Alert>
-          )}
-          <Form.Group controlId="name"> {/* Add name form group */}
-            <Form.Label>Name:</Form.Label>
-            <Form.Control type="text" value={name} onChange={handleNameChange} />
-          </Form.Group>
-          <Form.Group controlId="email">
-            <Form.Label>Email:</Form.Label>
-            <Form.Control type="email" value={email} onChange={handleEmailChange} />
-          </Form.Group>
-          <Form.Group controlId="password">
-            <Form.Label>Password:</Form.Label>
-            <Form.Control type="password" value={password} onChange={handlePasswordChange} />
-          </Form.Group>
-          <Form.Group controlId="confirmPassword">
-            <Form.Label>Confirm Password:</Form.Label>
-            <Form.Control type="password" value={confirmPassword} onChange={handleConfirmPasswordChange} />
-          </Form.Group>
-          <Form.Group controlId="role">
-            <Form.Label>Role:</Form.Label>
-            <Form.Control as="select" value={role} onChange={handleRoleChange}>
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </Form.Control>
-          </Form.Group>
-          <Button variant="primary" type="submit">
-            Sign Up
-          </Button>
-        </Form>
+      <div
+        style={{
+          backgroundImage: `url(${img1})`, // Replace with your image URL
+          backgroundSize: 'cover',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+        }}
+      >
+        <div
+          style={{
+            background: '#fff',
+            padding: '20px',
+            borderRadius: '10px',
+            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+            transition: 'box-shadow 0.3s ease-in-out',
+            maxWidth: '400px',
+            width: '100%',
+            position: 'relative', // Set position to enable hover animation
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)')}
+          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)')}
+        >
+          <div className="d-flex justify-content-center">
+            <Form onSubmit={handleSubmit} className="w-100">
+              <h2>Sign Up</h2>
+              {showError && (
+                <Alert variant="danger">
+                  {errorMessage}
+                </Alert>
+              )}
+              <Form.Group controlId="name">
+                <Form.Label>Name:</Form.Label>
+                <Form.Control type="text" value={name} onChange={handleNameChange} />
+              </Form.Group>
+              <Form.Group controlId="email">
+                <Form.Label>Email:</Form.Label>
+                <Form.Control type="email" value={email} onChange={handleEmailChange} />
+              </Form.Group>
+              <Form.Group controlId="password">
+                <Form.Label>Password:</Form.Label>
+                <Form.Control type="password" value={password} onChange={handlePasswordChange} />
+              </Form.Group>
+              <Form.Group controlId="confirmPassword">
+                <Form.Label>Confirm Password:</Form.Label>
+                <Form.Control type="password" value={confirmPassword} onChange={handleConfirmPasswordChange} />
+              </Form.Group>
+              <Form.Group controlId="role">
+                <Form.Label>Role:</Form.Label>
+                <Form.Control as="select" value={role} onChange={handleRoleChange}>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </Form.Control>
+              </Form.Group>
+              <Button variant="primary" type="submit">
+                Sign Up
+              </Button>
+            </Form>
+          </div>
+        </div>
       </div>
     </>
   );
