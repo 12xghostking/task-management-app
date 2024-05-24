@@ -88,7 +88,7 @@ const Notification = () => {
             Please select a recipient.
           </Form.Control.Feedback>
         </Form.Group>
-        <Button variant="primary" type="submit">
+        <Button  className="mt-2" variant="primary" type="submit">
           Send
         </Button>
       </Form>

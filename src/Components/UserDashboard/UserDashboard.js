@@ -4,6 +4,8 @@ import { Container } from 'react-bootstrap';
 import Notifications from './Notifications';
 import AssignedTasks from './AssignedTasks';
 import SharedFiles from './SharedFiles';
+import FileSharing from './FileSharing';
+import Ganttchart from './Ganttchart';
 const UserDashboard = () => {
   return (
     <div>
@@ -12,6 +14,8 @@ const UserDashboard = () => {
         <Notifications />
         <AssignedTasks />
         <SharedFiles />
+        <FileSharing />
+        <Ganttchart />
         {/* Add your user components here */}
       </Container>
     </div>

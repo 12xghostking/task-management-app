@@ -13,7 +13,7 @@ const HeaderComponent = () => {
   return (
     <header>
       <Navbar bg="light" expand="lg">
-        <Navbar.Brand as={Link} to="/">Task-Manage</Navbar.Brand>
+        <Navbar.Brand as={Link} to="/">Task-Orchestrator</Navbar.Brand>
         <Navbar.Toggle aria-controls="navbarNav" />
         <Navbar.Collapse id="navbarNav">
           <Nav className="ml-auto">

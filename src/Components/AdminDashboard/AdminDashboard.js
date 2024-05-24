@@ -4,6 +4,8 @@ import FileSharing from './FileSharing';
 import Overview from './Overview';
 import TeamMembers from './TeamMembers';
 import Notification from './Notification';
+import Comments from './Comments';
+import SharedFiles from './SharedFiles';
 import { Container, Row, Col, Navbar, Nav } from 'react-bootstrap';
 import { FaSignOutAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +25,7 @@ const Dashboard = () => {
           </Nav.Link>
         </Nav>
       </Navbar>
-      <Container className="mt-4">
+      <Container className="mt-4 mb-4">
         <Overview />
         <TaskManagement />
         <Row>
@@ -36,6 +38,14 @@ const Dashboard = () => {
         </Row>
         <Row>
           <Col><Notification /></Col>
+        </Row>
+        <Row>
+          <br />
+          <Col><Comments /></Col>
+        </Row>
+        <Row>
+          <br />
+          <Col><SharedFiles /></Col>
         </Row>
       </Container>
     </div>

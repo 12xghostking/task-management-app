@@ -7,6 +7,7 @@ const TaskManagement = () => {
   const [newDeadline, setNewDeadline] = useState('');
   const [newTeamMember, setNewTeamMember] = useState('');
   const [newNote, setNewNote] = useState('');
+  const [newpriority, setNewPriority] = useState('');
   const [filterCompleted, setFilterCompleted] = useState(false);
   const [editDeadlineTaskId, setEditDeadlineTaskId] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
@@ -45,6 +46,9 @@ const TaskManagement = () => {
   const handleNoteChange = (e) => {
     setNewNote(e.target.value);
   };
+  const handlePriorityChange = (e) => {
+    setNewPriority(e.target.value);
+  };
 
   const handleTaskSubmit = (e) => {
     e.preventDefault();
@@ -54,6 +58,7 @@ const TaskManagement = () => {
       deadline: newDeadline,
       assignedMembers: [newTeamMember],
       notes: newNote,
+      priority: newpriority,
       completed: false,
     };
   
@@ -65,7 +70,7 @@ const TaskManagement = () => {
           setNewDeadline('');
           setNewTeamMember('');
           setNewNote('');
-  
+          setNewPriority('');
           // Fetch the updated list of tasks
           axios.get('http://localhost:4000/tasks')
             .then((response) => {
@@ -168,6 +173,17 @@ const TaskManagement = () => {
                   {member.name}
                 </option>
               ))}
+            </Form.Control>
+          </Form.Group>
+          <Form.Group controlId="priority">
+            <Form.Label>Assign priority:</Form.Label>
+            <Form.Control as="select" value={newpriority} onChange={handlePriorityChange} required>
+              <option value="">Select priority</option>
+              <option value="0">P0</option>
+              <option value="1">P1</option>
+              <option value="2">P2</option>
+              <option value="3">P3</option>
+              <option value="4">P4</option>
             </Form.Control>
           </Form.Group>
           <Form.Group controlId="description">
