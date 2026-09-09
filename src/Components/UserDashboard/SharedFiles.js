@@ -1,89 +1,133 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Form, Button } from 'react-bootstrap';
-import axios from 'axios';
+import { Form, Spinner } from 'react-bootstrap';
+import { fileService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { FaDownload, FaFileAlt, FaSearch } from 'react-icons/fa';
 
-const SharedFiles = ({ match }) => {
+const SharedFiles = ({ refreshTrigger }) => {
   const [files, setFiles] = useState([]);
   const [filter, setFilter] = useState('');
-  const params = new URLSearchParams(window.location.search);
-  const usernameParam = params.get('name');
-  useEffect(() => {
-    const recipientName = usernameParam;
-    axios
-      .get(`http://localhost:4000/files/${recipientName}`)
-      .then((response) => {
-        setFiles(response.data);
-      })
-      .catch((error) => {
-        console.error('Error fetching shared files:', error);
-      });
-  }, [usernameParam]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  const handleFilterChange = (event) => {
-    setFilter(event.target.value);
-  };
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSharedFiles = async () => {
+      if (!user?.name) return;
+      try {
+        const res = await fileService.getByRecipient(user.name);
+        if (isMounted) setFiles(res.data || []);
+      } catch (err) {
+        console.error('Error fetching files for user:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchSharedFiles();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.name, refreshTrigger]);
 
   const filteredFiles = files.filter((file) =>
-    file.task.toLowerCase().includes(filter.toLowerCase())
+    (file.task || '').toLowerCase().includes(filter.toLowerCase()) ||
+    (file.filename || '').toLowerCase().includes(filter.toLowerCase())
   );
 
-  const handleDownloadFile = (filename) => {
-    axios
-      .get(`http://localhost:4000/files/download/${filename}`, { responseType: 'blob' })
-      .then((response) => {
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      })
-      .catch((error) => {
-        console.error('Error downloading file:', error);
-      });
-  };
-
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    if (!dateString) return 'Recent';
+    const d = new Date(dateString);
+    return isNaN(d) ? 'Recent' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   return (
-    <div>
-      <h4>Shared Files</h4>
-      <Form.Group>
-        <Form.Control
-          type="text"
-          placeholder="Filter by Task"
-          value={filter}
-          onChange={handleFilterChange}
-        />
-      </Form.Group>
-      <Table striped bordered hover>
-        <thead>
-          <tr>
-            <th>File Name</th>
-            <th>Task</th>
-            <th>Upload Date</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredFiles.map((file) => (
-            <tr key={file.id}>
-              <td>{file.filename}</td>
-              <td>{file.task}</td>
-              <td>{formatDate(file.upload_date)}</td>
-              <td>
-                <Button variant="primary" onClick={() => handleDownloadFile(file.filename)}>
-                  Download
-                </Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+    <div className="glass-card p-4 mb-4">
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+          <h5 className="text-white fw-bold mb-0">My Received Documents</h5>
+          <p className="text-secondary small mb-0">Files and deliverables shared with you</p>
+        </div>
+
+        <div className="position-relative" style={{ minWidth: '200px' }}>
+          <FaSearch
+            style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--text-muted)',
+            }}
+          />
+          <Form.Control
+            type="text"
+            className="modern-input"
+            style={{ paddingLeft: '34px', fontSize: '0.85rem' }}
+            placeholder="Search documents..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-4">
+          <Spinner size="sm" animation="border" variant="primary" />
+        </div>
+      ) : filteredFiles.length === 0 ? (
+        <div className="text-center py-4 text-secondary small">
+          No files have been shared with your account yet.
+        </div>
+      ) : (
+        <div className="table-responsive">
+          <table className="modern-table">
+            <thead>
+              <tr>
+                <th>File Document</th>
+                <th>Task Milestone</th>
+                <th>From</th>
+                <th>Date</th>
+                <th className="text-end">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredFiles.map((file) => (
+                <tr key={file._id || file.id || file.filename}>
+                  <td>
+                    <div className="d-flex align-items-center gap-2">
+                      <FaFileAlt className="text-primary" />
+                      <span className="text-white small fw-medium text-truncate" style={{ maxWidth: '180px' }}>
+                        {file.originalName || file.filename}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="text-secondary small">{file.task}</span>
+                  </td>
+                  <td>
+                    <span className="badge-pill badge-pending" style={{ textTransform: 'none' }}>
+                      {file.uploadedby || 'Admin'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="text-muted small">{formatDate(file.upload_date)}</span>
+                  </td>
+                  <td className="text-end">
+                    <a
+                      href={fileService.downloadUrl(file.filename)}
+                      download
+                      className="btn btn-sm btn-modern-primary px-3 py-1"
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      <FaDownload /> Download
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };

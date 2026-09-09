@@ -1,138 +1,219 @@
 import React, { useState } from 'react';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Alert from 'react-bootstrap/Alert';
-import Header from '../Header/Header.js';
-import axios from 'axios';
-import img1 from './image1.png';
-import { useNavigate } from 'react-router-dom';
+import { Container, Form, Alert, Spinner } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import Header from '../Header/Header';
+import { useAuth } from '../../context/AuthContext';
+import { FaUser, FaEnvelope, FaLock, FaUserShield, FaUserCheck, FaUserPlus, FaTasks } from 'react-icons/fa';
 
-const Signup = () => {
+const SignUp = () => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('user');
-  const [name, setName] = useState('');
-  const [showError, setShowError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const { register } = useAuth();
   const navigate = useNavigate();
-
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-  };
-  const handleNameChange = (e) => {
-    setName(e.target.value);
-  };
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
-    setShowError(false);
-  };
-
-  const handleConfirmPasswordChange = (e) => {
-    setConfirmPassword(e.target.value);
-    setShowError(false);
-  };
-
-  const handleRoleChange = (e) => {
-    setRole(e.target.value);
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword || password.length < 5) {
-      setShowError(true);
-      setErrorMessage('Passwords do not match or should be at least 5 characters long.');
-    } else {
-      try {
-        const response = await axios.post('http://localhost:4000/signup', {
-          email,
-          password,
-          role,
-          name, // Include name in the request payload
-        });
-        console.log('Signup successful');
-        navigate('/login');
-        // Redirect the user to the desired page (e.g., login page)
-      } catch (error) {
-        setShowError(true);
-        if (error.response && error.response.status === 400) {
-          setErrorMessage('Admin already exists');
-        } else {
-          setErrorMessage('Error signing up');
-        }
-        console.error('Error signing up:', error);
-        // Handle error (e.g., display error message to the user)
+    setError('');
+
+    if (!name || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { role: assignedRole } = await register({
+        name,
+        email,
+        password,
+        role,
+      });
+
+      if (assignedRole === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/user', { replace: true });
       }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Registration failed. Please try again.';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
       <div
         style={{
-          backgroundImage: `url(${img1})`, // Replace with your image URL
-          backgroundSize: 'cover',
+          flex: 1,
           display: 'flex',
-          justifyContent: 'center',
           alignItems: 'center',
-          height: '100vh',
+          justifyContent: 'center',
+          padding: '40px 16px',
         }}
       >
-        <div
-          style={{
-            background: '#fff',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'box-shadow 0.3s ease-in-out',
-            maxWidth: '400px',
-            width: '100%',
-            position: 'relative', // Set position to enable hover animation
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)')}
-          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)')}
-        >
-          <div className="d-flex justify-content-center">
-            <Form onSubmit={handleSubmit} className="w-100">
-              <h2>Sign Up</h2>
-              {showError && (
-                <Alert variant="danger">
-                  {errorMessage}
-                </Alert>
-              )}
-              <Form.Group controlId="name">
-                <Form.Label>Name:</Form.Label>
-                <Form.Control type="text" value={name} onChange={handleNameChange} />
+        <Container style={{ maxWidth: '480px' }}>
+          <div className="glass-card p-4 p-sm-5 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="brand-icon mx-auto mb-3" style={{ width: 44, height: 44 }}>
+                <FaTasks size={20} color="#fff" />
+              </div>
+              <h2 className="fw-bold mb-1 text-white">Create Workspace Account</h2>
+              <p className="text-secondary small">Join Task-Orchestrator to start collaborating</p>
+            </div>
+
+            {error && (
+              <Alert
+                variant="danger"
+                className="py-2 small border-0 text-white"
+                style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}
+              >
+                {error}
+              </Alert>
+            )}
+
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-3" controlId="signUpName">
+                <Form.Label className="d-flex align-items-center gap-2">
+                  <FaUser size={13} className="text-primary" /> Full Name
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  className="modern-input"
+                  placeholder="Alex Morgan"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setError('');
+                  }}
+                  required
+                />
               </Form.Group>
-              <Form.Group controlId="email">
-                <Form.Label>Email:</Form.Label>
-                <Form.Control type="email" value={email} onChange={handleEmailChange} />
+
+              <Form.Group className="mb-3" controlId="signUpEmail">
+                <Form.Label className="d-flex align-items-center gap-2">
+                  <FaEnvelope size={13} className="text-primary" /> Email Address
+                </Form.Label>
+                <Form.Control
+                  type="email"
+                  className="modern-input"
+                  placeholder="alex@example.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError('');
+                  }}
+                  required
+                />
               </Form.Group>
-              <Form.Group controlId="password">
-                <Form.Label>Password:</Form.Label>
-                <Form.Control type="password" value={password} onChange={handlePasswordChange} />
+
+              {/* Role Selection */}
+              <Form.Group className="mb-3">
+                <Form.Label className="d-flex align-items-center gap-2">Role Type</Form.Label>
+                <div className="d-flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRole('user')}
+                    className={`btn flex-fill d-flex align-items-center justify-content-center gap-2 py-2 ${
+                      role === 'user' ? 'btn-modern-primary' : 'btn-modern-secondary'
+                    }`}
+                    style={{ fontSize: '0.9rem' }}
+                  >
+                    <FaUserCheck /> Team Member
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('admin')}
+                    className={`btn flex-fill d-flex align-items-center justify-content-center gap-2 py-2 ${
+                      role === 'admin' ? 'btn-modern-primary' : 'btn-modern-secondary'
+                    }`}
+                    style={{ fontSize: '0.9rem' }}
+                  >
+                    <FaUserShield /> Admin
+                  </button>
+                </div>
               </Form.Group>
-              <Form.Group controlId="confirmPassword">
-                <Form.Label>Confirm Password:</Form.Label>
-                <Form.Control type="password" value={confirmPassword} onChange={handleConfirmPasswordChange} />
+
+              <Form.Group className="mb-3" controlId="signUpPassword">
+                <Form.Label className="d-flex align-items-center gap-2">
+                  <FaLock size={13} className="text-primary" /> Password (min. 6 characters)
+                </Form.Label>
+                <Form.Control
+                  type="password"
+                  className="modern-input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError('');
+                  }}
+                  required
+                />
               </Form.Group>
-              <Form.Group controlId="role">
-                <Form.Label>Role:</Form.Label>
-                <Form.Control as="select" value={role} onChange={handleRoleChange}>
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </Form.Control>
+
+              <Form.Group className="mb-4" controlId="signUpConfirmPassword">
+                <Form.Label className="d-flex align-items-center gap-2">
+                  <FaLock size={13} className="text-primary" /> Confirm Password
+                </Form.Label>
+                <Form.Control
+                  type="password"
+                  className="modern-input"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setError('');
+                  }}
+                  required
+                />
               </Form.Group>
-              <Button variant="primary" type="submit">
-                Sign Up
-              </Button>
+
+              <button
+                type="submit"
+                className="btn-modern-primary w-100 py-3 mb-3"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Spinner size="sm" animation="border" /> Creating Account...
+                  </>
+                ) : (
+                  <>
+                    <FaUserPlus /> Complete Registration
+                  </>
+                )}
+              </button>
+
+              <div className="text-center text-secondary small">
+                Already have an account?{' '}
+                <Link to="/login" className="text-primary text-decoration-none fw-semibold">
+                  Sign in
+                </Link>
+              </div>
             </Form>
           </div>
-        </div>
+        </Container>
       </div>
-    </>
+    </div>
   );
 };
 
-export default Signup;
+export default SignUp;

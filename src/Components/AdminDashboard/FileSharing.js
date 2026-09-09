@@ -1,100 +1,146 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button } from 'react-bootstrap';
-import axios from 'axios';
+import { Form, Spinner, Alert } from 'react-bootstrap';
+import { fileService, userService } from '../../services/api';
+import { FaCloudUploadAlt, FaFileAlt } from 'react-icons/fa';
 
-const FileSharing = () => {
+const FileSharing = ({ onFileUploaded }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedTask, setSelectedTask] = useState('');
-  const [selectedRecipient, setSelectedRecipient] = useState('');
+  const [selectedRecipient, setSelectedRecipient] = useState('All');
   const [users, setUsers] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    axios.get('http://localhost:4000/users')
-      .then((response) => {
-        setUsers(response.data);
+    let isMounted = true;
+    userService
+      .getUsers()
+      .then((res) => {
+        if (isMounted) setUsers(res.data || []);
       })
-      .catch((error) => {
-        console.error('Error fetching users:', error);
-      });
+      .catch((err) => console.error('Error fetching users:', err));
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
-  };
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
 
-  const handleTaskChange = (e) => {
-    setSelectedTask(e.target.value);
-  };
+    if (!selectedFile || !selectedTask) {
+      setError('Please select a file and enter a task name.');
+      return;
+    }
 
-  const handleRecipientChange = (e) => {
-    setSelectedRecipient(e.target.value);
-  };
-
-  const handleFileUpload = () => {
-    if (selectedFile && selectedTask && selectedRecipient) {
+    setUploading(true);
+    try {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('task', selectedTask);
-      formData.append('recipient', selectedRecipient);
+      formData.append('recipient', selectedRecipient || 'All');
 
-      axios.post('http://localhost:4000/files/upload', formData)
-        .then((response) => {
-          console.log('File Uploaded:', response.data);
-          setSelectedFile(null);
-          setSelectedTask('');
-          setSelectedRecipient('');
-        })
-        .catch((error) => {
-          console.error('Error uploading file:', error);
-        });
+      await fileService.upload(formData);
+      setSuccess(`File "${selectedFile.name}" uploaded successfully!`);
+      setSelectedFile(null);
+      setSelectedTask('');
+      setSelectedRecipient('All');
+
+      if (onFileUploaded) onFileUploaded();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error uploading file.');
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
-    <div>
-      <h2>File Sharing</h2>
+    <div className="glass-card p-4 mb-4 h-100">
+      <div className="d-flex align-items-center gap-2 mb-3">
+        <FaCloudUploadAlt className="text-primary" size={24} />
+        <div>
+          <h5 className="text-white fw-bold mb-0">File Vault Dispatch</h5>
+          <p className="text-secondary small mb-0">Distribute deliverables and documents securely</p>
+        </div>
+      </div>
 
-      <Form>
-        <Form.Group controlId="taskName">
-          <Form.Label>Task:</Form.Label>
+      {success && (
+        <Alert variant="success" className="py-2 small border-0 text-white" style={{ background: 'rgba(16, 185, 129, 0.2)' }}>
+          {success}
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="danger" className="py-2 small border-0 text-white" style={{ background: 'rgba(239, 68, 68, 0.2)' }}>
+          {error}
+        </Alert>
+      )}
+
+      <Form onSubmit={handleFileUpload}>
+        <Form.Group className="mb-3">
+          <Form.Label>Associated Task Title</Form.Label>
           <Form.Control
             type="text"
+            className="modern-input"
+            placeholder="e.g. Design Specification V2"
             value={selectedTask}
-            onChange={handleTaskChange}
-            placeholder="Enter the name of the task"
+            onChange={(e) => setSelectedTask(e.target.value)}
             required
           />
         </Form.Group>
 
-        <Form.Group controlId="recipientName">
-          <Form.Label>Recipient:</Form.Label>
-          <Form.Control
-            as="select"
+        <Form.Group className="mb-3">
+          <Form.Label>Recipient</Form.Label>
+          <Form.Select
+            className="modern-input"
             value={selectedRecipient}
-            onChange={handleRecipientChange}
-            required
+            onChange={(e) => setSelectedRecipient(e.target.value)}
           >
-            <option value="">Select Recipient</option>
+            <option value="All">All Team Members (Public Vault)</option>
             {users.map((user) => (
-              <option key={user.id} value={user.name}>
-                {user.name}
+              <option key={user._id || user.id} value={user.name}>
+                {user.name} ({user.email})
               </option>
             ))}
-          </Form.Control>
+          </Form.Select>
         </Form.Group>
 
-        <Form.Group>
-          <Form.Label>File:</Form.Label>
-          <Form.Control type="file" onChange={handleFileChange} required />
+        <Form.Group className="mb-4">
+          <Form.Label>Select Document or Asset</Form.Label>
+          <Form.Control
+            type="file"
+            className="modern-input"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+            required
+          />
+          {selectedFile && (
+            <div className="text-muted small mt-2 d-flex align-items-center gap-2">
+              <FaFileAlt className="text-primary" />
+              <span>
+                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+              </span>
+            </div>
+          )}
         </Form.Group>
 
-        <Button
-          variant="primary"
-          onClick={handleFileUpload}
-          disabled={!selectedFile || !selectedTask || !selectedRecipient}
+        <button
+          type="submit"
+          className="btn-modern-primary w-100 py-2"
+          disabled={uploading || !selectedFile || !selectedTask}
         >
-          Upload File
-        </Button>
+          {uploading ? (
+            <>
+              <Spinner size="sm" animation="border" /> Uploading...
+            </>
+          ) : (
+            <>
+              <FaCloudUploadAlt /> Secure Upload
+            </>
+          )}
+        </button>
       </Form>
     </div>
   );

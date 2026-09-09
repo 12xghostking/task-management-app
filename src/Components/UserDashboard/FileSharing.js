@@ -1,73 +1,116 @@
-import React, { useState, useEffect } from 'react';
-import { Form, Button } from 'react-bootstrap';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { Form, Spinner, Alert } from 'react-bootstrap';
+import { fileService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { FaCloudUploadAlt, FaFileAlt } from 'react-icons/fa';
 
-const FileSharing = () => {
-  const params = new URLSearchParams(window.location.search);
-  const usernameParam = params.get('name');
+const FileSharing = ({ onFileUploaded }) => {
+  const { user } = useAuth();
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedTask, setSelectedTask] = useState('');
- 
-  
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
-  };
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
-  const handleTaskChange = (e) => {
-    setSelectedTask(e.target.value);
-  };
+  const handleFileUpload = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
 
+    if (!selectedFile || !selectedTask) {
+      setError('Please specify the task and choose a file to upload.');
+      return;
+    }
 
-  const handleFileUpload = () => {
-    if (selectedFile && selectedTask ) {
+    setUploading(true);
+    try {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('task', selectedTask);
-      formData.append('uploadedby', usernameParam);
-      
+      formData.append('recipient', 'Admin');
+      formData.append('uploadedby', user?.name || 'Team Member');
 
-      axios.post('http://localhost:4000/files/upload/user', formData)
-        .then((response) => {
-          console.log('File Uploaded:', response.data);
-          setSelectedFile(null);
-          setSelectedTask('');
-          document.querySelector('input[type="file"]').value = null;
-        })
-        .catch((error) => {
-          console.error('Error uploading file:', error);
-        });
+      await fileService.upload(formData);
+      setSuccess(`Deliverable "${selectedFile.name}" successfully uploaded for review!`);
+      setSelectedFile(null);
+      setSelectedTask('');
+
+      if (onFileUploaded) onFileUploaded();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error uploading file deliverable.');
+    } finally {
+      setUploading(false);
     }
   };
 
   return (
-    <div>
-      <h2>File Sharing</h2>
+    <div className="glass-card p-4 mb-4">
+      <div className="d-flex align-items-center gap-2 mb-3">
+        <FaCloudUploadAlt className="text-primary" size={24} />
+        <div>
+          <h5 className="text-white fw-bold mb-0">Submit Work Deliverable</h5>
+          <p className="text-secondary small mb-0">Upload documents or code archives to project leads</p>
+        </div>
+      </div>
 
-      <Form>
-        <Form.Group controlId="taskName">
-          <Form.Label>Task:</Form.Label>
+      {success && (
+        <Alert variant="success" className="py-2 small border-0 text-white" style={{ background: 'rgba(16, 185, 129, 0.2)' }}>
+          {success}
+        </Alert>
+      )}
+
+      {error && (
+        <Alert variant="danger" className="py-2 small border-0 text-white" style={{ background: 'rgba(239, 68, 68, 0.2)' }}>
+          {error}
+        </Alert>
+      )}
+
+      <Form onSubmit={handleFileUpload}>
+        <Form.Group className="mb-3">
+          <Form.Label>Task Title Reference</Form.Label>
           <Form.Control
             type="text"
+            className="modern-input"
+            placeholder="e.g. Frontend Refactor Sprint"
             value={selectedTask}
-            onChange={handleTaskChange}
-            placeholder="Enter the name of the task"
+            onChange={(e) => setSelectedTask(e.target.value)}
             required
           />
         </Form.Group>
 
-       
-        <Form.Group>
-          <Form.Label>File:</Form.Label>
-          <Form.Control type="file" onChange={handleFileChange} required />
+        <Form.Group className="mb-3">
+          <Form.Label>Choose File Document</Form.Label>
+          <Form.Control
+            type="file"
+            className="modern-input"
+            onChange={(e) => setSelectedFile(e.target.files[0])}
+            required
+          />
+          {selectedFile && (
+            <div className="text-muted small mt-2 d-flex align-items-center gap-2">
+              <FaFileAlt className="text-primary" />
+              <span>
+                {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+              </span>
+            </div>
+          )}
         </Form.Group>
 
-        <Button
-          variant="primary"
-          onClick={handleFileUpload}
-          disabled={!selectedFile || !selectedTask}
+        <button
+          type="submit"
+          className="btn-modern-primary w-100 py-2"
+          disabled={uploading || !selectedFile || !selectedTask}
         >
-          Upload File
-        </Button>
+          {uploading ? (
+            <>
+              <Spinner size="sm" animation="border" /> Uploading Deliverable...
+            </>
+          ) : (
+            <>
+              <FaCloudUploadAlt /> Submit File to Workspace
+            </>
+          )}
+        </button>
       </Form>
     </div>
   );

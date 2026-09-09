@@ -1,108 +1,144 @@
 import React, { useState } from 'react';
-import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
-import Alert from 'react-bootstrap/Alert';
-import Header from '../Header/Header.js';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import img1 from './image1.png';
+import { Container, Form, Alert, Spinner } from 'react-bootstrap';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import Header from '../Header/Header';
+import { useAuth } from '../../context/AuthContext';
+import { FaLock, FaEnvelope, FaSignInAlt, FaTasks } from 'react-icons/fa';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showError, setShowError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleEmailChange = (e) => {
-    setEmail(e.target.value);
-    setShowError(false); // Hide error when user starts typing
-  };
-
-  const handlePasswordChange = (e) => {
-    setPassword(e.target.value);
-    setShowError(false); // Hide error when user starts typing
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
 
-    // Perform login logic here using the email and password state values
+    if (!email || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+
     if (password.length < 5) {
-      setShowError(true);
-      setErrorMessage('Password should be at least 5 characters long.');
-    } else {
-      axios
-        .post('http://localhost:4000/login', { email, password })
-        .then((response) => {
-          const { role, name } = response.data;
-          // Redirect to the appropriate dashboard based on the role and pass name as a URL parameter
-          if (role === 'admin') {
-            // Redirect to admin dashboard with name parameter
-            navigate(`/admin?name=${name}`);
-          } else {
-            // Redirect to user dashboard with name parameter
-            navigate(`/user?name=${name}`);
-          }
-        })
-        .catch((error) => {
-          setErrorMessage('Invalid email or password.');
-          setShowError(true);
-          console.log(error);
-        });
+      setError('Password must be at least 5 characters long.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { role } = await login(email, password);
+      // Redirect to the original intended route or the role dashboard
+      const from = location.state?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+      } else if (role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/user', { replace: true });
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Invalid credentials or server unavailable.';
+      setError(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
       <div
         style={{
-          backgroundImage: `url(${img1})`,
-          backgroundSize: 'cover',
+          flex: 1,
           display: 'flex',
-          flexDirection: 'column', // Display the elements in a column
           alignItems: 'center',
           justifyContent: 'center',
-          height: '100vh',
+          padding: '40px 16px',
         }}
       >
-        <div
-          style={{
-            background: '#fff',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-            transition: 'box-shadow 0.3s ease-in-out',
-            maxWidth: '400px',
-            width: '100%',
-            position: 'relative', // Set position to enable hover animation
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.2)')}
-          onMouseLeave={(e) => (e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)')}
-        >
-          {showError && (
-            <Alert variant="danger">
-              {errorMessage}
-            </Alert>
-          )}
-          <Form onSubmit={handleSubmit}>
-            <h2>Login</h2>
-            <Form.Group controlId="email">
-              <Form.Label>Email:</Form.Label>
-              <Form.Control type="email" value={email} onChange={handleEmailChange} />
-            </Form.Group>
-            <Form.Group controlId="password">
-              <Form.Label>Password:</Form.Label>
-              <Form.Control type="password" value={password} onChange={handlePasswordChange} />
-            </Form.Group>
-            <Button variant="primary" type="submit">
-              Login
-            </Button>
-          </Form>
-        </div>
+        <Container style={{ maxWidth: '440px' }}>
+          <div className="glass-card p-4 p-sm-5 animate-fade-in">
+            <div className="text-center mb-4">
+              <div className="brand-icon mx-auto mb-3" style={{ width: 44, height: 44 }}>
+                <FaTasks size={20} color="#fff" />
+              </div>
+              <h2 className="fw-bold mb-1 text-white">Welcome Back</h2>
+              <p className="text-secondary small">Enter your credentials to access your workspace</p>
+            </div>
+
+            {error && (
+              <Alert variant="danger" className="py-2 small border-0 text-white" style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
+                {error}
+              </Alert>
+            )}
+
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-3" controlId="loginEmail">
+                <Form.Label className="d-flex align-items-center gap-2">
+                  <FaEnvelope size={13} className="text-primary" /> Email Address
+                </Form.Label>
+                <Form.Control
+                  type="email"
+                  className="modern-input"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError('');
+                  }}
+                  required
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-4" controlId="loginPassword">
+                <Form.Label className="d-flex align-items-center gap-2">
+                  <FaLock size={13} className="text-primary" /> Password
+                </Form.Label>
+                <Form.Control
+                  type="password"
+                  className="modern-input"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError('');
+                  }}
+                  required
+                />
+              </Form.Group>
+
+              <button
+                type="submit"
+                className="btn-modern-primary w-100 py-3 mb-3"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <Spinner size="sm" animation="border" /> Authenticating...
+                  </>
+                ) : (
+                  <>
+                    <FaSignInAlt /> Sign In
+                  </>
+                )}
+              </button>
+
+              <div className="text-center text-secondary small">
+                Don't have an account?{' '}
+                <Link to="/signup" className="text-primary text-decoration-none fw-semibold">
+                  Create an account
+                </Link>
+              </div>
+            </Form>
+          </div>
+        </Container>
       </div>
-    </>
+    </div>
   );
 };
 

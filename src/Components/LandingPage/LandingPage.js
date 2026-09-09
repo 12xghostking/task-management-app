@@ -1,32 +1,26 @@
 import React from 'react';
-import Header from '../Header/Header.js';
-import HeroSection from './HeroSection.js';
-import FeaturesSection from './FeaturesSection.js';
-import { useMatch  } from 'react-router-dom';
-import CallToAction from './CallToAction.js';
+import Header from '../Header/Header';
+import HeroSection from './HeroSection';
+import FeaturesSection from './FeaturesSection';
+import CallToAction from './CallToAction';
+import { Container } from 'react-bootstrap';
 
 const LandingPage = () => {
-  const match = useMatch('/features');
-  const renderSection = () => {
-    if (match) {
-      return <FeaturesSection />;
-    }
-    // Add more conditions for other sections if needed
-    // Return default section or null if no conditions match
-    return <FeaturesSection />;
-  };
   return (
-    <div>
-     <Header/>
-      <div className="container my-5">
-        <HeroSection />
-      </div>
-      <div className="container my-5">
-        {renderSection()}
-      </div>
-      <div className="container my-5">
+    <div className="landing-page-wrapper">
+      <Header />
+      <HeroSection />
+      <FeaturesSection />
+      <Container>
         <CallToAction />
-      </div>
+      </Container>
+      <footer className="text-center py-4 text-muted small border-top border-secondary border-opacity-10">
+        <Container>
+          <p className="mb-0">
+            © {new Date().getFullYear()} Task-Orchestrator. Built with React, Node.js & MongoDB.
+          </p>
+        </Container>
+      </footer>
     </div>
   );
 };

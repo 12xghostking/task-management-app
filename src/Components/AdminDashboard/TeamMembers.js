@@ -1,56 +1,91 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Form } from 'react-bootstrap';
-import axios from 'axios';
+import { Row, Col, Spinner } from 'react-bootstrap';
+import { userService } from '../../services/api';
+import { FaUserCircle, FaTasks } from 'react-icons/fa';
 
 const TeamMembers = () => {
   const [members, setMembers] = useState([]);
-  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    axios.get('http://localhost:4000/members')
-      .then((response) => {
-        setMembers(response.data);
-      })
-      .catch((error) => {
-        console.error('Error fetching members:', error);
-      });
+    let isMounted = true;
+    const fetchMembers = async () => {
+      try {
+        const res = await userService.getTeamMembers();
+        if (isMounted) {
+          setMembers(res.data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching team members:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchMembers();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const handleFilterChange = (e) => {
-    setFilter(e.target.value);
-  };
-
-  const filteredMembers = filter === 'all'
-    ? members
-    : members.filter((member) => (
-        filter === 'free' ? member.totalTasks === 0 : member.totalTasks > 0
-      ));
-
   return (
-    <div>
-      <h2>Team Members</h2>
+    <div className="glass-card p-4 mb-4 h-100">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h5 className="text-white fw-bold mb-1">Team Directory</h5>
+          <p className="text-secondary small mb-0">Active members registered in the organization</p>
+        </div>
+        <span className="badge-pill badge-in-progress">{members.length} Members</span>
+      </div>
 
-      {/* Filter */}
-      <Form.Group controlId="taskFilter">
-        <Form.Label>Filter:</Form.Label>
-        <Form.Control as="select" value={filter} onChange={handleFilterChange}>
-          <option value="all">All</option>
-          <option value="free">Free</option>
-          <option value="assigned">Assigned</option>
-        </Form.Control>
-      </Form.Group>
+      {loading ? (
+        <div className="text-center py-4">
+          <Spinner size="sm" animation="border" variant="primary" />
+        </div>
+      ) : members.length === 0 ? (
+        <div className="text-center py-4 text-secondary small">No registered team members found.</div>
+      ) : (
+        <Row className="g-3">
+          {members.map((member) => (
+            <Col sm={6} key={member.id || member._id || member.name}>
+              <div
+                className="glass-card p-3 d-flex align-items-center justify-content-between"
+                style={{ background: 'rgba(255, 255, 255, 0.03)' }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      background: 'var(--primary-gradient)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '1.2rem',
+                    }}
+                  >
+                    {member.name ? member.name.charAt(0).toUpperCase() : <FaUserCircle />}
+                  </div>
+                  <div>
+                    <strong className="text-white d-block" style={{ fontSize: '0.95rem' }}>
+                      {member.name}
+                    </strong>
+                    <span className="text-muted small">{member.email || 'Team Member'}</span>
+                  </div>
+                </div>
 
-      {/* Team Members */}
-      {filteredMembers.map((member) => (
-        <Card key={member.id} className="mb-3">
-          <Card.Body>
-            <Card.Title>{member.name}</Card.Title>
-            <Card.Text>
-              <strong>Total Tasks Assigned:</strong> {member.totalTasks}
-            </Card.Text>
-          </Card.Body>
-        </Card>
-      ))}
+                <div className="text-end">
+                  <span className="badge-pill badge-pending d-flex align-items-center gap-1">
+                    <FaTasks size={10} /> {member.totalTasks || 0} tasks
+                  </span>
+                </div>
+              </div>
+            </Col>
+          ))}
+        </Row>
+      )}
     </div>
   );
 };

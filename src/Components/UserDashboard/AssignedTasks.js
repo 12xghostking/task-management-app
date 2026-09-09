@@ -1,154 +1,268 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Form } from 'react-bootstrap';
-import { ListGroup, Badge, Button } from 'react-bootstrap';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Modal, Spinner, Form } from 'react-bootstrap';
+import { taskService, commentService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import {
+  FaCheckCircle,
+  FaRegCircle,
+  FaCalendarAlt,
+  FaSortAmountDown,
+  FaSortAmountUp,
+  FaInfoCircle,
+  FaPaperPlane,
+} from 'react-icons/fa';
 
-const AssignedTasks = () => {
-  const [showModal, setShowModal] = useState(false);
-  const [currentTask, setCurrentTask] = useState(null);
+const AssignedTasks = ({ onTasksLoaded }) => {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
-  const [sortDirection, setSortDirection] = useState('asc');
+  const [loading, setLoading] = useState(true);
+  const [sortAsc, setSortAsc] = useState(true);
+  const [filter, setFilter] = useState('all');
+
+  // Modal details
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [taskComment, setTaskComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  const fetchTasks = useCallback(async () => {
+    if (!user?.name) return;
+    try {
+      const res = await taskService.getByMember(user.name);
+      const data = res.data || [];
+      setTasks(data);
+      if (onTasksLoaded) onTasksLoaded(data);
+    } catch (err) {
+      console.error('Error fetching assigned tasks:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.name, onTasksLoaded]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
+
+  const handleToggleCompleted = async (task) => {
+    const updated = !task.completed;
+    try {
+      await taskService.toggleCompleted(task._id || task.id, updated);
+      setTasks((prev) =>
+        prev.map((t) =>
+          (t._id || t.id) === (task._id || task.id)
+            ? { ...t, completed: updated, status: updated ? 'completed' : 'in-progress' }
+            : t
+        )
+      );
+    } catch (err) {
+      console.error('Error toggling task:', err);
+    }
+  };
 
   const handleSort = () => {
-    const direction = sortDirection === 'asc' ? 'desc' : 'asc';
-    setSortDirection(direction);
-    const sortedTasks = [...tasks].sort((a, b) => {
-      if (direction === 'asc') {
-        return a.priority - b.priority;
-      } else {
-        return b.priority - a.priority;
-      }
+    const nextAsc = !sortAsc;
+    setSortAsc(nextAsc);
+    const sorted = [...tasks].sort((a, b) => {
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
+      return nextAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     });
-    setTasks(sortedTasks);
+    setTasks(sorted);
   };
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const usernameParam = params.get('name');
-  
-    axios.get(`http://localhost:4000/tasks/${usernameParam}`)
-      .then((response) => {
-        setTasks(response.data);
-      })
-      .catch((error) => {
-        console.error('Error fetching tasks:', error);
-      });
-  }, []);
+
   const handleOpenModal = (task) => {
-    setCurrentTask(task);
+    setSelectedTask(task);
+    setTaskComment('');
     setShowModal(true);
   };
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
-  const handleSave =  () => {
-    const comment = document.getElementById('comment').value;
-    const updatedTasks = tasks.map((task) =>
-      task.id === currentTask.id ? { ...task, comment: comment } : task
-    );
-    setTasks(updatedTasks);
-    axios
-      .put(`http://localhost:4000/tasks/${currentTask.id}/comment`, { comment })
-      .then((response) => {
-        if (response.status === 200) {
-          // Comment added successfully
-          alert('Comment added successfully');
-        }
-      })
-      .catch((error) => {
-        console.error('Error adding comment:', error);
+
+  const handleSendFeedback = async (e) => {
+    e.preventDefault();
+    if (!taskComment.trim() || !selectedTask) return;
+
+    setSubmittingComment(true);
+    try {
+      await commentService.create({
+        name: `Feedback on: ${selectedTask.name}`,
+        commentfrom: user.name,
+        comment: taskComment.trim(),
+        taskId: selectedTask._id || selectedTask.id,
       });
-    setShowModal(false);
-  
+      alert('Feedback dispatched to project feed!');
+      setTaskComment('');
+      setShowModal(false);
+    } catch (err) {
+      console.error('Error submitting feedback:', err);
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
-  const handleStatusChange = (taskId) => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === taskId ? { ...task, completed: task.completed === 0 ? 1 : 0 } : task
-    );
-    setTasks(updatedTasks);
+  const filteredTasks = tasks.filter((t) => {
+    const isDone = t.completed || t.status === 'completed';
+    if (filter === 'completed') return isDone;
+    if (filter === 'pending') return !isDone;
+    return true;
+  });
 
-    const updatedStatus = updatedTasks.find((task) => task.id === taskId)?.completed;
-    axios
-      .put(`http://localhost:4000/tasks/${taskId}/status`, { completed: updatedStatus })
-      .then((response) => {
-        if (response.status === 200) {
-          // Task status updated successfully
-        }
-      })
-      .catch((error) => {
-        console.error('Error updating task status:', error);
-      });
+  const getPriorityBadge = (priority) => {
+    const p = (priority || 'medium').toLowerCase();
+    if (p === 'high') return <span className="badge-pill badge-high">High</span>;
+    if (p === 'low') return <span className="badge-pill badge-low">Low</span>;
+    return <span className="badge-pill badge-medium">Medium</span>;
   };
 
   return (
-    <div>
-      <h4>Assigned Tasks</h4>
-      <Button className="mb-2" variant="primary" onClick={handleSort}>
-        Sort by Priority ({sortDirection === 'asc' ? '⬆️' : '⬇️'})
-      </Button>
-      <ListGroup>
-        {tasks.map((task) => (
-          <ListGroup.Item key={task.id} className="d-flex justify-content-between align-items-center">
-            <div>
-              <strong>{task.name}</strong>
-              <br />
-              <small>Deadline: {task.deadline}</small>
-              <br />
-              <small>Notes : {task.notes}</small>
+    <div className="glass-card p-4 mb-4">
+      {/* Header */}
+      <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+          <h4 className="text-white fw-bold mb-1">My Assigned Objectives</h4>
+          <p className="text-secondary small mb-0">Tasks delegated to your account</p>
+        </div>
+
+        <div className="d-flex gap-2">
+          <button onClick={handleSort} className="btn btn-sm btn-modern-secondary d-flex align-items-center gap-1">
+            {sortAsc ? <FaSortAmountDown /> : <FaSortAmountUp />} Sort A-Z
+          </button>
+          <button
+            onClick={() => setFilter('all')}
+            className={`btn btn-sm ${filter === 'all' ? 'btn-modern-primary' : 'btn-modern-secondary'}`}
+          >
+            All ({tasks.length})
+          </button>
+          <button
+            onClick={() => setFilter('pending')}
+            className={`btn btn-sm ${filter === 'pending' ? 'btn-modern-primary' : 'btn-modern-secondary'}`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setFilter('completed')}
+            className={`btn btn-sm ${filter === 'completed' ? 'btn-modern-primary' : 'btn-modern-secondary'}`}
+          >
+            Completed
+          </button>
+        </div>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div className="text-center py-4">
+          <Spinner animation="border" variant="primary" />
+        </div>
+      ) : filteredTasks.length === 0 ? (
+        <div className="text-center py-4 text-secondary small glass-card p-4">
+          No tasks currently assigned matching your filter.
+        </div>
+      ) : (
+        <div className="d-flex flex-column gap-3">
+          {filteredTasks.map((task) => {
+            const taskId = task._id || task.id;
+            const isDone = task.completed || task.status === 'completed';
+
+            return (
+              <div
+                key={taskId}
+                className="glass-card p-3 d-flex flex-wrap align-items-center justify-content-between gap-3"
+                style={{
+                  background: isDone ? 'rgba(16, 185, 129, 0.04)' : 'rgba(255, 255, 255, 0.02)',
+                  borderLeft: isDone ? '4px solid #10b981' : '4px solid #6366f1',
+                }}
+              >
+                <div className="d-flex align-items-center gap-3">
+                  <button
+                    onClick={() => handleToggleCompleted(task)}
+                    className="btn btn-link p-0 text-decoration-none border-0"
+                    title={isDone ? 'Mark as In-Progress' : 'Mark as Completed'}
+                  >
+                    {isDone ? (
+                      <FaCheckCircle className="text-success" size={22} />
+                    ) : (
+                      <FaRegCircle className="text-secondary" size={22} />
+                    )}
+                  </button>
+
+                  <div>
+                    <div className={`fw-semibold ${isDone ? 'text-decoration-line-through text-muted' : 'text-white'}`}>
+                      {task.name}
+                    </div>
+                    <div className="d-flex align-items-center gap-3 text-secondary small mt-1">
+                      <span className="d-flex align-items-center gap-1">
+                        <FaCalendarAlt className="text-primary" /> Due: {task.deadline}
+                      </span>
+                      {getPriorityBadge(task.priority)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="d-flex align-items-center gap-2">
+                  <button
+                    onClick={() => handleOpenModal(task)}
+                    className="btn btn-sm btn-modern-secondary px-3 py-1"
+                  >
+                    <FaInfoCircle /> Details
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Task Details Modal */}
+      {selectedTask && (
+        <Modal show={showModal} onHide={() => setShowModal(false)} centered contentClassName="modern-modal">
+          <Modal.Header closeButton>
+            <Modal.Title className="text-white fw-bold">{selectedTask.name}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className="mb-3">
+              <strong className="text-secondary small d-block mb-1">Assigned Members</strong>
+              <span className="badge-pill badge-in-progress" style={{ textTransform: 'none' }}>
+                {Array.isArray(selectedTask.assignedMembers)
+                  ? selectedTask.assignedMembers.join(', ')
+                  : selectedTask.assignedMembers}
+              </span>
             </div>
-            <div>
-              <Badge variant={task.completed === 0 ? 'warning' : 'success'}>
-                {task.completed === 0 ? 'In Progress' : 'Completed'}
-              </Badge>
-              <p></p>
-              {task.completed === 0 ? (
-                <Button
-                  variant="warning"
-                  size="sm"
-                  className="ml-auto"
-                  onClick={() => handleStatusChange(task.id)}
-                >
-                  Complete
-                </Button>
-              ) : (
-                <Button
-                  variant="success"
-                  size="sm"
-                  className="ml-auto"
-                  onClick={() => handleStatusChange(task.id)}
-                >
-                  Reopen
-                </Button>
-              )} <Button variant="primary" size="sm" onClick={() => handleOpenModal(task)}>
-              Add Comments
-            </Button>
+
+            <div className="mb-3">
+              <strong className="text-secondary small d-block mb-1">Target Deadline</strong>
+              <span className="text-white">{selectedTask.deadline}</span>
             </div>
-           
-          </ListGroup.Item>
-        ))}
-      </ListGroup>
-      
-<Modal show={showModal} onHide={handleCloseModal}>
-  <Modal.Header closeButton>
-    <Modal.Title>Add Comment to {currentTask?.name}</Modal.Title>
-  </Modal.Header>
-  <Modal.Body>
-    <Form>
-      <Form.Group controlId="comment">
-        <Form.Label>Comment</Form.Label>
-        <Form.Control as="textarea" rows={3} />
-      </Form.Group>
-    </Form>
-  </Modal.Body>
-  <Modal.Footer>
-    <Button variant="secondary" onClick={handleCloseModal}>
-      Close
-    </Button>
-    <Button variant="primary" onClick={handleSave}>
-      Save Changes
-    </Button>
-  </Modal.Footer>
-</Modal>
+
+            <div className="mb-3">
+              <strong className="text-secondary small d-block mb-1">Notes & Specifications</strong>
+              <div className="glass-card p-3 text-secondary small">
+                {selectedTask.notes || 'No notes provided by project manager.'}
+              </div>
+            </div>
+
+            <hr className="border-secondary border-opacity-25" />
+
+            <Form onSubmit={handleSendFeedback}>
+              <Form.Group className="mb-3">
+                <Form.Label className="text-white small">Submit Progress Feedback or Question</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  className="modern-input"
+                  placeholder="Leave an update on this task..."
+                  value={taskComment}
+                  onChange={(e) => setTaskComment(e.target.value)}
+                />
+              </Form.Group>
+              <button
+                type="submit"
+                className="btn-modern-primary btn-sm py-2 px-3"
+                disabled={submittingComment || !taskComment.trim()}
+              >
+                {submittingComment ? <Spinner size="sm" animation="border" /> : <><FaPaperPlane /> Post to Team Feed</>}
+              </button>
+            </Form>
+          </Modal.Body>
+        </Modal>
+      )}
     </div>
   );
 };

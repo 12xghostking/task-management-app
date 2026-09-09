@@ -1,59 +1,103 @@
-import React, { useState, useEffect } from 'react';
-import { ListGroup, Fade, Button } from 'react-bootstrap';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Spinner } from 'react-bootstrap';
+import { notificationService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { FaBell, FaTimes, FaCheck } from 'react-icons/fa';
 
-const Notifications = () => {
+const Notifications = ({ onCountChange }) => {
   const [notifications, setNotifications] = useState([]);
-  const params = new URLSearchParams(window.location.search);
-  const username = params.get('name');
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.name) return;
+    try {
+      const res = await notificationService.getByUsername(user.name);
+      const data = res.data || [];
+      setNotifications(data);
+      if (onCountChange) onCountChange(data.length);
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.name, onCountChange]);
 
   useEffect(() => {
-    // Fetch notifications for the user from the backend
-    axios
-      .get(`http://localhost:4000/notifications/${username}`)
-      .then((response) => {
-        setNotifications(response.data);
-      })
-      .catch((error) => {
-        console.log('Error fetching notifications:', error);
-      });
-  }, [username]);
+    fetchNotifications();
+  }, [fetchNotifications]);
 
-  const handleRemoveNotification = (id) => {
-    // Remove notification from the screen and the database
-    axios
-      .delete(`http://localhost:4000/notifications/${id}`)
-      .then(() => {
-        setNotifications((prevNotifications) =>
-          prevNotifications.filter((notification) => notification.id !== id)
-        );
-      })
-      .catch((error) => {
-        console.log('Error removing notification:', error);
+  const handleDismiss = async (id) => {
+    try {
+      await notificationService.delete(id);
+      setNotifications((prev) => {
+        const next = prev.filter((n) => (n._id || n.id) !== id);
+        if (onCountChange) onCountChange(next.length);
+        return next;
       });
+    } catch (err) {
+      console.error('Error dismissing notification:', err);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Just now';
+    const d = new Date(dateString);
+    return isNaN(d) ? 'Recent' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div>
-    <h4>Notifications</h4>
-    <ListGroup>
-      {notifications.map((notification, index) => (
-        <Fade in key={notification.id} timeout={500 * (index + 1)}>
-          <ListGroup.Item className="d-flex justify-content-between align-items-center">
-            {notification.notificationText}
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => handleRemoveNotification(notification.id)}
-            >
-              X
-            </Button>
-          </ListGroup.Item>
-        </Fade>
-      ))}
-    </ListGroup>
-  </div>
-  
+    <div className="glass-card p-4 mb-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex align-items-center gap-2">
+          <FaBell className="text-warning" size={20} />
+          <div>
+            <h5 className="text-white fw-bold mb-0">Direct Announcements</h5>
+            <p className="text-secondary small mb-0">Alerts sent specifically to your workspace</p>
+          </div>
+        </div>
+        <span className="badge-pill badge-high">{notifications.length} Alerts</span>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-3">
+          <Spinner size="sm" animation="border" variant="primary" />
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="text-center py-4 text-secondary small d-flex flex-column align-items-center gap-2">
+          <FaCheck className="text-success" size={24} />
+          <span>You are completely caught up! Zero unread notifications.</span>
+        </div>
+      ) : (
+        <div className="d-flex flex-column gap-2">
+          {notifications.map((item) => {
+            const notifId = item._id || item.id;
+            return (
+              <div
+                key={notifId}
+                className="glass-card p-3 d-flex justify-content-between align-items-center gap-3 animate-fade-in"
+                style={{ background: 'rgba(255, 255, 255, 0.02)', borderLeft: '3px solid #f59e0b' }}
+              >
+                <div>
+                  <div className="text-white small fw-medium">{item.notificationText}</div>
+                  <div className="text-muted small mt-1">
+                    From: {item.sender || 'Project Lead'} · {formatDate(item.timestamp || item.createdAt)}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleDismiss(notifId)}
+                  className="btn btn-sm btn-link text-secondary text-decoration-none p-1"
+                  title="Dismiss notification"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 };
 
